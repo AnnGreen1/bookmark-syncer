@@ -1,98 +1,207 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>bookmark-syncer</title>
+  <title>Bookmark Syncer</title>
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     .wrapper {
-      width: 185px;
-      padding: 10px;
-      border-radius: 4px;
-      font-family: 'Microsoft Yahei';
+      width: 220px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #fff;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 12px;
+    }
+    .header img {
+      width: 24px;
+      height: 24px;
+      margin-right: 8px;
+    }
+    .header h1 {
+      font-size: 16px;
+      color: #389e0d;
+    }
+    .menu {
+      list-style: none;
+    }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #333;
+    }
+    .menu-item:hover {
+      background: #e6f7ff;
+      color: #1890ff;
+    }
+    .menu-item:active {
+      background: #bae7ff;
+    }
+    .menu-item.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .menu-item.disabled:hover {
+      background: transparent;
+      color: #333;
+    }
+    .menu-item svg {
+      width: 18px;
+      height: 18px;
+      margin-right: 10px;
+      flex-shrink: 0;
+    }
+    .menu-item .text {
+      flex: 1;
       font-size: 14px;
     }
-    .title {
-      font-size: 18px;
-      color: #389e0d;
-      margin: 0 0 10px 0;
-      padding-bottom: 10px;
-      border-bottom: 1px solid #eee;
+    .menu-item .badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      background: #f5f5f5;
+      color: #666;
+    }
+    .menu-item:hover .badge {
+      background: #1890ff;
+      color: #fff;
+    }
+    .loading-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.95);
       display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      z-index: 100;
+      display: none;
     }
-    .title img {
-      margin-right: 5px;
-      width: 20px;
-      height: 20px;
+    .loading-overlay.show {
+      display: flex;
     }
-    ul {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    ul li {
+    .loading-spinner {
+      width: 32px;
       height: 32px;
-      display: flex;
-      align-items: center;
-      padding: 0 10px;
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #389e0d;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 12px;
     }
-    ul li span {
-      pointer-events: none;
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
-    ul li img, ul li svg {
-      display: inline-block;
-      width: 20px;
-      margin-right: 8px;
-      margin-top: 3px;
-      color: #444;
-      pointer-events: none;
+    .loading-text {
+      font-size: 14px;
+      color: #666;
     }
-    ul li:hover {
-      color: #fff;
-      background-color: #389e0d;
-      cursor: pointer;
+    .status-bar {
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px solid #eee;
+      font-size: 12px;
+      color: #999;
+      text-align: center;
     }
-    ul li:hover img, ul li:hover svg {
-      color: #fff;
+    .status-bar .sync-time {
+      display: block;
+      margin-top: 4px;
+    }
+    .divider {
+      height: 1px;
+      background: #eee;
+      margin: 8px 0;
     }
   </style>
 </head>
 <body>
   <div class="wrapper">
-    <h4 class="title">
-      <img src="../icon/32.png" alt="">
-      Bookmark Syncer
-    </h4>
-    <ul>
-      <li class="bs-btn" name="sync-from-remote">
-        <img src="../assets/img/download.svg" alt="">
-        <span data-i18n="sync-from-remote">同步书签到本地</span>
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="loading-spinner"></div>
+      <div class="loading-text" id="loadingText">同步中...</div>
+    </div>
+    
+    <div class="header">
+      <img src="../icon/32.png" alt="Bookmark Syncer">
+      <h1>Bookmark Syncer</h1>
+    </div>
+    
+    <ul class="menu">
+      <li class="menu-item" name="pull">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+          <polyline points="7 10 12 15 17 10"></polyline>
+          <line x1="12" y1="15" x2="12" y2="3"></line>
+        </svg>
+        <span class="text" data-i18n="pull">Pull (拉取)</span>
       </li>
-      <li class="bs-btn" name="sync-to-remote">
-        <img src="../assets/img/upload.svg" alt="">
-        <span data-i18n="sync-to-remote">同步书签到远端</span>
+      <li class="menu-item" name="push">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 15v4a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-4"></path>
+          <polyline points="17 8 12 3 7 8"></polyline>
+          <line x1="12" y1="3" x2="12" y2="15"></line>
+        </svg>
+        <span class="text" data-i18n="push">Push (推送)</span>
       </li>
-      <li class="bs-btn" name="clear-local">
-        <img src="../assets/img/remove.svg" alt="">
-        <span data-i18n="clear_local">清空本地书签</span>
+      <li class="divider"></li>
+      <li class="menu-item" name="diff">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 20V10"></path>
+          <path d="M12 20V4"></path>
+          <path d="M6 20v-6"></path>
+        </svg>
+        <span class="text">查看差异</span>
       </li>
-      <li class="bs-btn" name="show-options">
-        <img src="../assets/img/setting.svg" alt="">
-        <span data-i18n="setting">设置</span>
+      <li class="divider"></li>
+      <li class="menu-item" name="clear-local">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+          <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+        </svg>
+        <span class="text" data-i18n="clear_local">清空本地</span>
       </li>
-      <li class="bs-btn" name="help">
-        <img src="../assets/img/help.svg" alt="">
-        <span data-i18n="help">帮助</span>
+      <li class="menu-item" name="show-options">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span class="text" data-i18n="setting">设置</span>
       </li>
-      <!-- TODO -->
-      <!-- 1. 清空本地书签 -->
-      <!-- 2. 清空远端书签 -->
-      <!-- 3. 导出本地书签 JSON -->
+      <li class="menu-item" name="help">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+        <span class="text" data-i18n="help">帮助</span>
+      </li>
     </ul>
+    
+    <div class="status-bar" id="statusBar">
+      <span data-i18n="status">状态:</span>
+      <span class="sync-time" id="syncTime">-</span>
+    </div>
   </div>
-  <script src="./axios-0.21.1.min.js"></script>
+  
   <script src="./popup.js" type="module"></script>
 </body>
 </html>

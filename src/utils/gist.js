@@ -71,23 +71,28 @@ const Gist = {
   },
   async fetch () {
     const gist = await this.getGist();
-    // see: https://docs.github.com/en/rest/reference/gists#get-a-gist
-    return await $api.get(`/gists/${gist.id}`)
-      .then(async (res) => {
-        const data = await res.json();
-        if (data) {
-          const gistFile = data.files[FILE_NAME];
-          let fileContent;
-          if (gistFile.truncated) {
-            fileContent = await $api.get(gistFile.raw_url, { responseType: 'blob' }).then(resp => resp.text());
-          } else {
-            fileContent = gistFile.content;
-          }
-          const isGitee = !isGithub();
-          return fileContent ? JSON.parse(isGitee ? decodeURIComponent(fileContent) : fileContent) : null;
+    if (!gist || !gist.id) {
+      return null;
+    }
+    try {
+      const res = await $api.get(`/gists/${gist.id}`);
+      const data = await res.json();
+      if (data && data.files && data.files[FILE_NAME]) {
+        const gistFile = data.files[FILE_NAME];
+        let fileContent;
+        if (gistFile.truncated) {
+          fileContent = await $api.get(gistFile.raw_url, { responseType: 'blob' }).then(resp => resp.text());
+        } else {
+          fileContent = gistFile.content;
         }
-        return null;
-      });
+        const isGitee = !isGithub();
+        return fileContent ? JSON.parse(isGitee ? decodeURIComponent(fileContent) : fileContent) : null;
+      }
+      return null;
+    } catch (e) {
+      console.warn('Failed to fetch gist:', e);
+      return null;
+    }
   },
   async fetchGists () {
     // see: https://docs.github.com/en/rest/reference/gists#list-gists-for-the-authenticated-user

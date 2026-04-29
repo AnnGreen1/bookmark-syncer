@@ -25,7 +25,7 @@ init();
 
 const commonHeaders = () => ({
   'Content-Type': 'application/json;charset=UTF-8',
-  'Authorization': `token ${access_token || ''}`,
+  'Authorization': `${store === 'github' ? 'token' : 'Bearer'} ${access_token || ''}`,
   'Accept': store === 'github' ? 'application/vnd.github.v3+json' : 'application/json',
 });
 
@@ -33,23 +33,21 @@ const getUrl = url => (store === 'github' ? GITHUB_URL : GITEE_URL) + url;
 
 export const isGithub = () => store === 'github';
 
-const handleResponse = response => {
+const handleResponse = (response, silent = false) => {
   function throwErr (err) {
-    showNotification(err.message);
+    if (!silent) {
+      showNotification(err.message);
+    }
     throw err;
   }
-  // check credentials first
-  /* const res = response.json();
-  if (res.data && res.data.message && res.data.message === 'Bad credentials') {
-    options.clear();
-    throwErr(new Error(i18nGet('invalid_access_token')));
-  } */
-  // check status
   const isSuccess = (response.status + '').match(/^2\d{2}/);
   if (isSuccess) return response;
   switch (response.status) {
     case 404:
       throwErr(new Error(i18nGet('GIST_NOT_FOUND')));
+    case 401:
+      options.clear();
+      throwErr(new Error(i18nGet('invalid_access_token')));
   }
   throwErr(new Error(response.statusText));
 }

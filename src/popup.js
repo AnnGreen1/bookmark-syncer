@@ -1,58 +1,96 @@
 import { bookmarkManager } from './manager.js';
 import { HOME_PAGE } from './utils/constant.js';
-import { replace as i18nReplace } from './utils/i18n.js';
+import { get as i18nGet, replace as i18nReplace } from './utils/i18n.js';
 
 const browser = chrome;
 
-window.addEventListener('click', e => {
-  const { target } = e;
-  if (target && (target.className === 'bs-btn')) {
-    clickItem(target.getAttribute('name'));
-  }
-})
+let isLoading = false;
 
-window.addEventListener('unhandledrejection', e => {
-  console.log('UNHANDLED PROMISE REJECTION: ', e);
-}, { capture: true });
-
-window.onunhandledrejection = event => {
-  console.log(`UNHANDLED PROMISE REJECTION: ${event.reason}`);
-};
-
-function clickItem (name) {
-  switch (name) {
-    case 'sync-from-remote':
-      bookmarkManager.syncFromRemote();
-      break;
-    case 'sync-to-remote':
-      bookmarkManager.syncToRemote();
-      break;
-    case 'clear-local':
-      bookmarkManager.clearLocal();
-      break;
-    case 'show-options':
-      browser.runtime.openOptionsPage();
-      break;
-    case 'help':
-      window.open(HOME_PAGE);
-      break;
-  }
+function showLoading(text = '处理中...') {
+  document.getElementById('loadingOverlay').classList.add('show');
+  document.getElementById('loadingText').textContent = text;
+  isLoading = true;
 }
 
-async function replaceIcon () {
-  const imgs = document.querySelectorAll('.bs-btn img');
-  for (const img of imgs) {
-    try {
-      const res = await fetch(img.src);
-      const content = await res.text();
-      const svg = document.createElement('svg');
-      svg.innerHTML = content;
-      img.replaceWith(svg);
-    } catch (e) {
-      console.log(e);
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+  isLoading = false;
+}
+
+async function handleAction(actionName) {
+  if (isLoading) return;
+  
+  try {
+    switch (actionName) {
+      case 'pull':
+        showLoading('正在拉取远程书签...');
+        await bookmarkManager.pull();
+        updateLastSyncTime();
+        break;
+      case 'push':
+        showLoading('正在推送本地书签...');
+        await bookmarkManager.push();
+        updateLastSyncTime();
+        break;
+      case 'diff':
+        showLoading('正在比较差异...');
+        await bookmarkManager.showDiff();
+        break;
+      case 'clear-local':
+        await bookmarkManager.clearLocal();
+        break;
+      case 'show-options':
+        browser.runtime.openOptionsPage();
+        break;
+      case 'help':
+        window.open(HOME_PAGE);
+        break;
     }
+  } catch (e) {
+    console.error('Action failed:', e);
+    alert(`操作失败: ${e.message || '未知错误'}`);
+  } finally {
+    hideLoading();
   }
 }
 
-i18nReplace();
-replaceIcon();
+function updateLastSyncTime() {
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+  document.getElementById('syncTime').textContent = `最后同步: ${timeStr}`;
+  
+  browser.storage.local.set({ lastSyncTime: now.getTime() });
+}
+
+async function loadLastSyncTime() {
+  try {
+    const data = await browser.storage.local.get(['lastSyncTime']);
+    if (data.lastSyncTime) {
+      const date = new Date(data.lastSyncTime);
+      const timeStr = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      document.getElementById('syncTime').textContent = `最后同步: ${timeStr}`;
+    }
+  } catch (e) {
+    console.error('Failed to load sync time:', e);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  i18nReplace();
+  loadLastSyncTime();
+  
+  document.addEventListener('click', (e) => {
+    const target = e.target.closest('.menu-item');
+    if (target && !target.classList.contains('disabled')) {
+      const actionName = target.getAttribute('name');
+      if (actionName) {
+        handleAction(actionName);
+      }
+    }
+  });
+});
+
+window.addEventListener('unhandledrejection', (e) => {
+  console.error('UNHANDLED PROMISE REJECTION:', e);
+  hideLoading();
+});

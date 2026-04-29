@@ -82,5 +82,25 @@
   "CHECK_INPUT": {
     "message": "请检查你的输入",
     "description": ""
+  },
+  "pull": {
+    "message": "Pull (拉取)",
+    "description": ""
+  },
+  "push": {
+    "message": "Push (推送)",
+    "description": ""
+  },
+  "NO_CHANGES": {
+    "message": "没有需要同步的变更",
+    "description": ""
+  },
+  "SYNC_CANCELLED": {
+    "message": "同步已取消",
+    "description": ""
+  },
+  "status": {
+    "message": "状态:",
+    "description": ""
   }
 }

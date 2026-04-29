@@ -82,5 +82,25 @@
   "CHECK_INPUT": {
     "message": "Please check your input",
     "description": ""
+  },
+  "pull": {
+    "message": "Pull",
+    "description": ""
+  },
+  "push": {
+    "message": "Push",
+    "description": ""
+  },
+  "NO_CHANGES": {
+    "message": "No changes to sync",
+    "description": ""
+  },
+  "SYNC_CANCELLED": {
+    "message": "Sync cancelled",
+    "description": ""
+  },
+  "status": {
+    "message": "Status:",
+    "description": ""
   }
 }

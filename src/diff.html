@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>书签版本控制</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; min-height: 100vh; }
+    
+    .header {
+      background: #24292e; color: #fff; padding: 16px 24px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .header h1 { font-size: 18px; display: flex; align-items: center; gap: 8px; }
+    .header h1 img { width: 24px; height: 24px; }
+    
+    .actions { display: flex; gap: 8px; }
+    .btn {
+      padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;
+      transition: all 0.2s; font-weight: 500;
+    }
+    .btn-primary { background: #28a745; color: #fff; }
+    .btn-primary:hover { background: #22863a; }
+    .btn-primary:disabled { background: #95de64; cursor: not-allowed; }
+    .btn-secondary { background: #444d58; color: #fff; }
+    .btn-secondary:hover { background: #586069; }
+    .btn-danger { background: #d73a49; color: #fff; }
+    .btn-danger:hover { background: #cb2431; }
+    
+    .container { padding: 20px; max-width: 1600px; margin: 0 auto; }
+    
+    .git-status {
+      background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      padding: 16px; margin-bottom: 20px;
+      display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .status-item {
+      display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+      background: #f6f8fa; border-radius: 4px;
+    }
+    .status-item .count {
+      font-size: 16px; font-weight: bold;
+    }
+    .status-item.added .count { color: #22863a; }
+    .status-item.deleted .count { color: #cb2431; }
+    .status-item.modified .count { color: #d29922; }
+    .status-item.conflict .count { color: #db6d28; }
+    .status-item.unchanged .count { color: #6a737d; }
+    
+    .workflow-bar {
+      display: flex; gap: 16px; margin-bottom: 20px;
+      padding: 12px 16px; background: #fff; border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .workflow-step {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .workflow-step.active { font-weight: 600; color: #28a745; }
+    .workflow-step.done { color: #28a745; }
+    .workflow-step.pending { color: #999; }
+    
+    .diff-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    
+    .panel {
+      background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 16px; border-bottom: 1px solid #e1e4e8;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600;
+    }
+    .panel-header.local { background: #f8fafd; }
+    .panel-header.remote { background: #f0fff4; }
+    
+    .panel-body { max-height: 500px; overflow-y: auto; }
+    .file-list { list-style: none; padding: 4px; }
+    
+    .file-item {
+      padding: 8px 12px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: 12px;
+      position: relative;
+    }
+    .file-item:last-child { border-bottom: none; }
+    .file-item:hover { background: #f6f8fa; }
+    
+    .file-status {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+    }
+    .file-status.added { background: #22863a; }
+    .file-status.deleted { background: #cb2431; }
+    .file-status.modified { background: #d29922; }
+    .file-status.conflict { background: #db6d28; }
+    .file-status.unchanged { background: #6a737d; }
+    
+    .file-icon { font-size: 14px; }
+    .file-name { flex: 1; font-size: 14px; }
+    .file-path { font-size: 12px; color: #6a737d; }
+    
+    .file-actions {
+      display: flex; gap: 4px; opacity: 0; transition: opacity 0.2s;
+    }
+    .file-item:hover .file-actions { opacity: 1; }
+    
+    .stage-btn {
+      padding: 4px 8px; border: 1px solid #d1d5da; border-radius: 4px;
+      font-size: 11px; cursor: pointer; background: #fff;
+      transition: all 0.2s;
+    }
+    .stage-btn:hover { background: #f6f8fa; border-color: #959da5; }
+    .stage-btn.staged { background: #28a745; border-color: #28a745; color: #fff; }
+    
+    .stage-panel {
+      background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      overflow: hidden; margin-top: 20px;
+    }
+    .stage-header {
+      padding: 12px 16px; border-bottom: 1px solid #e1e4e8;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600; background: #fffbe6;
+    }
+    
+    .stage-list { list-style: none; padding: 4px; }
+    .stage-item {
+      padding: 8px 12px; border-bottom: 1px solid #f0f0f0;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .stage-item:last-child { border-bottom: none; }
+    
+    .stage-item .file-status { width: 10px; height: 10px; }
+    
+    .footer-actions {
+      margin-top: 20px; padding: 16px; background: #fff;
+      border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+      display: flex; justify-content: flex-end; gap: 12px;
+    }
+    
+    .conflict-modal {
+      display: none;
+      position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5); z-index: 1000;
+      align-items: center; justify-content: center;
+    }
+    .conflict-modal.show { display: flex; }
+    
+    .modal-content {
+      background: #fff; border-radius: 8px; width: 90%; max-width: 900px;
+      max-height: 80vh; overflow: hidden;
+    }
+    .modal-header {
+      padding: 16px 20px; border-bottom: 1px solid #e1e4e8;
+      display: flex; justify-content: space-between; align-items: center;
+      font-weight: 600;
+    }
+    .modal-close { cursor: pointer; color: #6a737d; }
+    .modal-body { padding: 20px; max-height: 60vh; overflow-y: auto; }
+    
+    .conflict-view {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+    }
+    .conflict-side {
+      padding: 16px; border-radius: 8px;
+    }
+    .conflict-side.local { background: #f8fafd; border: 1px solid #b3d1ff; }
+    .conflict-side.remote { background: #f0fff4; border: 1px solid #b3ffb3; }
+    
+    .conflict-title { font-size: 12px; font-weight: 600; margin-bottom: 12px; }
+    .conflict-item { padding: 8px; background: #fff; border-radius: 4px; margin-bottom: 8px; }
+    .conflict-item .title { font-weight: 500; }
+    .conflict-item .url { font-size: 12px; color: #6a737d; word-break: break-all; }
+    
+    .modal-footer {
+      padding: 16px 20px; border-top: 1px solid #e1e4e8;
+      display: flex; justify-content: flex-end; gap: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>
+      <img src="../icon/32.png" alt="Bookmark Syncer">
+      书签版本控制
+    </h1>
+    <div class="actions">
+      <button class="btn btn-secondary" id="btnCancel">关闭</button>
+      <button class="btn btn-primary" id="btnCommit" disabled>提交并推送</button>
+    </div>
+  </div>
+  
+  <div class="container">
+    <div class="workflow-bar">
+      <div class="workflow-step done">
+        <span>1️⃣</span>
+        <span>获取变更</span>
+      </div>
+      <div class="workflow-step active">
+        <span>2️⃣</span>
+        <span>解决冲突</span>
+      </div>
+      <div class="workflow-step pending">
+        <span>3️⃣</span>
+        <span>暂存变更</span>
+      </div>
+      <div class="workflow-step pending">
+        <span>4️⃣</span>
+        <span>提交推送</span>
+      </div>
+    </div>
+    
+    <div class="git-status">
+      <div class="status-item added">
+        <span class="count" id="statAdded">0</span>
+        <span>新增</span>
+      </div>
+      <div class="status-item deleted">
+        <span class="count" id="statDeleted">0</span>
+        <span>删除</span>
+      </div>
+    </div>
+    
+    <div class="diff-panel">
+      <div class="panel">
+        <div class="panel-header local">
+          <span>📁 本地工作区</span>
+          <span style="font-weight: normal; font-size: 12px; color: #6a737d;">Local</span>
+        </div>
+        <div class="panel-body">
+          <ul class="file-list" id="localFiles"></ul>
+        </div>
+      </div>
+      
+      <div class="panel">
+        <div class="panel-header remote">
+          <span>☁️ 远程仓库</span>
+          <span style="font-weight: normal; font-size: 12px; color: #6a737d;">Remote</span>
+        </div>
+        <div class="panel-body">
+          <ul class="file-list" id="remoteFiles"></ul>
+        </div>
+      </div>
+    </div>
+    
+    <div class="stage-panel">
+      <div class="stage-header">
+        <span>📋 暂存区</span>
+        <span style="font-weight: normal; font-size: 12px; color: #6a737d;">
+          已暂存 <span id="stagedCount">0</span> 项
+        </span>
+      </div>
+      <div class="panel-body">
+        <ul class="stage-list" id="stageList"></ul>
+      </div>
+    </div>
+    
+    <div class="footer-actions">
+      <button class="btn btn-secondary" id="btnStageAll">暂存所有</button>
+      <button class="btn btn-danger" id="btnUnstageAll">取消暂存</button>
+      <button class="btn btn-primary" id="btnCommitFinal">提交并推送</button>
+    </div>
+  </div>
+  
+  <div class="conflict-modal" id="conflictModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <span>解决冲突</span>
+        <span class="modal-close" id="modalClose">✕</span>
+      </div>
+      <div class="modal-body">
+        <div class="conflict-view" id="conflictView"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="btnKeepLocal">保留本地</button>
+        <button class="btn btn-primary" id="btnKeepRemote">保留远程</button>
+      </div>
+    </div>
+  </div>
+  
+  <script src="./diff.js"></script>
+</body>
+</html>
